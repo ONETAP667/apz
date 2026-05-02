@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ItemPreviews {
+  ItemID  Int    @id
+  Preview Bytes?
+  Items   Items  @relation(fields: [ItemID], references: [ID], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model ItemTypes {
+  TypeID      Int     @id @default(autoincrement())
+  Description String? @db.VarChar(256)
+  Items       Items[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model Items {
+  ID                Int                @id @default(autoincrement())
+  OwnerID           Int
+  Price             Int                @default(0)
+  Type              Int?
+  Weapon            Int?
+  Special           Int?
+  SkinID            Int                @default(0)
+  Nametag           String?            @db.VarChar(256)
+  DateCreated       DateTime           @default(now()) @db.Timestamptz(6)
+  Archive           Boolean?           @default(false)
+  ItemPreviews      ItemPreviews?
+  Users             Users              @relation(fields: [OwnerID], references: [ID], onDelete: NoAction, onUpdate: NoAction)
+  SpecialToCategory SpecialToCategory? @relation(fields: [Special], references: [SpecialID], onDelete: NoAction, onUpdate: NoAction)
+  ItemTypes         ItemTypes?         @relation(fields: [Type], references: [TypeID], onDelete: NoAction, onUpdate: NoAction)
+  WeaponIDToWeapon  WeaponIDToWeapon?  @relation(fields: [Weapon], references: [WeaponID], onDelete: NoAction, onUpdate: NoAction)
+  Transactions      Transactions[]
+
+  @@index([OwnerID], map: "idx_items_owner")
+  @@index([Type], map: "idx_items_type")
+}
+
+model RestrictionType {
+  ID                                           Int     @id @default(autoincrement())
+  RestDescription                              String  @db.VarChar(256)
+  Users_Users_RestrictionTypeToRestrictionType Users[] @relation("Users_RestrictionTypeToRestrictionType")
+}
+
+model SpecialToCategory {
+  SpecialID Int     @id @default(autoincrement())
+  Category  String  @db.VarChar(256)
+  Items     Items[]
+}
+
+model Transactions {
+  TransactionID                      Int      @id @default(autoincrement())
+  SellerID                           Int?
+  BuyerID                            Int?
+  ItemID                             Int?
+  Price                              Int
+  Date                               DateTime @default(now()) @db.Timestamptz(6)
+  Canceled                           Boolean? @default(false)
+  Archive                            Boolean? @default(false)
+  Users_Transactions_BuyerIDToUsers  Users?   @relation("Transactions_BuyerIDToUsers", fields: [BuyerID], references: [ID], onDelete: NoAction, onUpdate: NoAction)
+  Items                              Items?   @relation(fields: [ItemID], references: [ID], onDelete: NoAction, onUpdate: NoAction)
+  Users_Transactions_SellerIDToUsers Users?   @relation("Transactions_SellerIDToUsers", fields: [SellerID], references: [ID], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([BuyerID], map: "idx_transactions_buyer")
+  @@index([SellerID], map: "idx_transactions_seller")
+}
+
+model Users {
+  ID                                                     Int              @id @default(autoincrement())
+  Username                                               String           @db.VarChar(256)
+  Balance                                                Int              @default(0)
+  DateJoined                                             DateTime         @default(now()) @db.Timestamptz(6)
+  RestrictionType                                        Int?             @default(0)
+  RestrictedUntil                                        DateTime?        @db.Timestamptz(6)
+  RestrictionReason                                      String?          @db.VarChar(256)
+  Archive                                                Boolean?         @default(false)
+  Version                                                Int              @default(0)
+  email                                                  String           @unique @db.VarChar(256)
+  password_hash                                          String           @db.VarChar(256)
+  Items                                                  Items[]
+  Transactions_Transactions_BuyerIDToUsers               Transactions[]   @relation("Transactions_BuyerIDToUsers")
+  Transactions_Transactions_SellerIDToUsers              Transactions[]   @relation("Transactions_SellerIDToUsers")
+  RestrictionType_Users_RestrictionTypeToRestrictionType RestrictionType? @relation("Users_RestrictionTypeToRestrictionType", fields: [RestrictionType], references: [ID], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model WeaponIDToWeapon {
+  WeaponID Int     @id @default(autoincrement())
+  Weapon   String  @db.VarChar(256)
+  Items    Items[]
+}
